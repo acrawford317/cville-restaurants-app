@@ -1,17 +1,95 @@
 import React from 'react';
+import axios from 'axios';
+import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import ReactDOM from 'react-dom';
 import './index.css';
-import App from './App';
-import reportWebVitals from './reportWebVitals';
 
-ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-  document.getElementById('root')
-);
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
+const API_KEY = process.env.REACT_APP_API_KEY;
+
+class App extends React.Component {
+  state = {
+    restaurants: [],
+    isLoading: true,
+    errors: null
+  };
+
+  getRestaurants() {
+    axios
+      .get("https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=38.0293,-78.4767&radius=10000&type=restaurant&key=" + `${API_KEY}`)
+      .then(response =>
+        response.data.results.map(restaurant => ({
+          name: `${restaurant.name}`,
+          place_id: `${restaurant.place_id}`,
+          rating: `${restaurant.rating}`,
+          price_level: `${restaurant.price_level}` == "undefined" ? "Not Available" : `${restaurant.price_level}`,
+          icon: `${restaurant.icon}`,
+          photo_ref: `${restaurant.photos[0].photo_reference}`,
+          photo_url: "https://maps.googleapis.com/maps/api/place/photo?maxwidth=300&photoreference=" + `${restaurant.photos[0].photo_reference}` + "&key=" + `${API_KEY}`,
+          latitude: `${restaurant.geometry.location.lat}`,
+          longitude: `${restaurant.geometry.location.lng}`,
+          address: `${restaurant.vicinity}`
+        }))
+      )
+      .then(restaurants => {
+        this.setState({
+          restaurants,
+          isLoading: false
+        });
+      })
+      .catch(error => this.setState({ error, isLoading: false }));
+  }
+
+  componentDidMount() {
+    this.getRestaurants();
+  }
+
+  render() {
+    const { isLoading, restaurants } = this.state;
+    return (
+      <React.Fragment>
+        <h2 className="title">Charlottesville Restaurants</h2>
+        <MapContainer center={[38.0293, -78.4767]} zoom={14}>
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+          />
+          {restaurants.map(restaurant => (
+            <Marker
+              key={restaurant.place_id}
+              position={[restaurant.latitude, restaurant.longitude]}>
+              <Popup>
+                <b>{restaurant.name}</b> <br />
+                {restaurant.address}
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+        <div className="container">
+          {!isLoading ? (
+            restaurants.map(restaurant => {
+              const { place_id, name, rating, price_level, photo_url } = restaurant;
+              return (
+                <div key={place_id}>
+                  <p className="heading">{name}</p>
+                  <div className="info">
+                    <p >Rating: {rating}</p>
+                    <p >Price Level: {price_level}</p>
+                  </div>
+                  <div>
+                    <img className="photo" src={photo_url} />
+                  </div>
+                  <hr />
+                </div>
+              );
+            })
+          ) : (
+            <p>Loading...</p>
+          )}
+        </div>
+      </React.Fragment>
+    );
+  }
+}
+
+ReactDOM.render(<App />, document.getElementById("root"));
