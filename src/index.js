@@ -1,6 +1,7 @@
 import React from 'react';
 import axios from 'axios';
-import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import { Button } from 'react-bootstrap';
+import { Map, Marker, Popup, TileLayer } from "react-leaflet";
 import ReactDOM from 'react-dom';
 import './index.css';
 
@@ -11,7 +12,9 @@ class App extends React.Component {
   state = {
     restaurants: [],
     isLoading: true,
-    errors: null
+    errors: null,
+    center: [38.0293, -78.4767],
+    zoom: 14
   };
 
   getRestaurants() {
@@ -22,7 +25,7 @@ class App extends React.Component {
           name: `${restaurant.name}`,
           place_id: `${restaurant.place_id}`,
           rating: `${restaurant.rating}`,
-          price_level: `${restaurant.price_level}` == "undefined" ? "Not Available" : `${restaurant.price_level}`,
+          price_level: `${restaurant.price_level}` === "undefined" ? "Not Available" : `${restaurant.price_level}`,
           icon: `${restaurant.icon}`,
           photo_ref: `${restaurant.photos[0].photo_reference}`,
           photo_url: "https://maps.googleapis.com/maps/api/place/photo?maxwidth=300&photoreference=" + `${restaurant.photos[0].photo_reference}` + "&key=" + `${API_KEY}`,
@@ -44,12 +47,16 @@ class App extends React.Component {
     this.getRestaurants();
   }
 
+  handleClick(lat, lng) {
+    this.setState({ zoom: 18, center: [lat, lng] });
+  }
+
   render() {
     const { isLoading, restaurants } = this.state;
     return (
       <React.Fragment>
         <h2 className="title">Charlottesville Restaurants</h2>
-        <MapContainer center={[38.0293, -78.4767]} zoom={14}>
+        <Map center={this.state.center} zoom={this.state.zoom}>
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
@@ -64,11 +71,11 @@ class App extends React.Component {
               </Popup>
             </Marker>
           ))}
-        </MapContainer>
+        </Map>
         <div className="container">
           {!isLoading ? (
             restaurants.map(restaurant => {
-              const { place_id, name, rating, price_level, photo_url } = restaurant;
+              const { place_id, name, rating, price_level, photo_url, latitude, longitude } = restaurant;
               return (
                 <div key={place_id}>
                   <p className="heading">{name}</p>
@@ -77,8 +84,12 @@ class App extends React.Component {
                     <p >Price Level: {price_level}</p>
                   </div>
                   <div>
-                    <img className="photo" src={photo_url} />
+                    <img className="photo" src={photo_url}/>
                   </div>
+                  <Button variant="outlined" style={{ padding:"5px", margin: "10px"}} 
+                    onClick={() => {this.handleClick(latitude, longitude);}}>
+                    View on map
+                  </Button>
                   <hr />
                 </div>
               );
